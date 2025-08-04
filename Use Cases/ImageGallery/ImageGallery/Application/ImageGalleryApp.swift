@@ -12,6 +12,7 @@ struct ImageGalleryApp: App {
     var body: some Scene {
         WindowGroup {
             ImageGalleryView()
+                .ignoresSafeArea(.all) 
         }
     }
 }
