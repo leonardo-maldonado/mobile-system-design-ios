@@ -48,6 +48,7 @@ class ImageGalleryViewController: UIViewController {
             withReuseIdentifier: "Header"
         )
         collectionView.prefetchDataSource = self
+        collectionView.delegate = self
         view.addSubview(collectionView)
     }
     
@@ -146,6 +147,14 @@ class ImageGalleryViewController: UIViewController {
             }
             .store(in: &cancellables)
     }
+    
+    // MARK: - Coordinator Bridge
+    
+    weak var interactable: ImageGalleryInteractable?
+    
+    func setInteractable(_ interactable: ImageGalleryInteractable) {
+        self.interactable = interactable
+    }
 }
 
 extension ImageGalleryViewController: UICollectionViewDataSourcePrefetching {
@@ -161,5 +170,14 @@ extension ImageGalleryViewController: UICollectionViewDataSourcePrefetching {
                 await _ = viewModel.prefetch(for: item)
             }
         }
+    }
+}
+
+extension ImageGalleryViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        print("Cell tapped at: \(indexPath.section), row \(indexPath.item)")
+
+        let item = viewModel.items[indexPath.item]
+        interactable?.didSelectMedia(item) 
     }
 }

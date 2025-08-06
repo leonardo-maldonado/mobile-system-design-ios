@@ -1,10 +1,12 @@
 import SwiftUI
 
-import SwiftUI
-
 struct ImageGalleryView: UIViewControllerRepresentable {
+    @ObservedObject var coordinator: ImageGalleryCoordinator
+    
     func makeUIViewController(context: Context) -> ImageGalleryViewController {
-        return ImageGalleryViewController()
+        let controller = ImageGalleryViewController()
+        controller.setInteractable(coordinator) // Connect UIKit to coordinator
+        return controller
     }
     
     func updateUIViewController(

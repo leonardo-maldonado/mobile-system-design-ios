@@ -9,10 +9,17 @@ import SwiftUI
 
 @main
 struct ImageGalleryApp: App {
+    @StateObject private var coordinator = ImageGalleryCoordinator()
+    
     var body: some Scene {
         WindowGroup {
-            ImageGalleryView()
-                .ignoresSafeArea(.all) 
+            NavigationStack {
+                ImageGalleryView(coordinator: coordinator)
+                    .ignoresSafeArea(.all)
+                    .navigationDestination(item: $coordinator.currentRoute) { route in
+                        ImageGalleryRouter.destination(for: route)
+                    }
+            }
         }
     }
 }

@@ -45,10 +45,28 @@ class ImageGalleryViewModel: ObservableObject {
         
         switch result {
         case .success(let media):
+            // Update the source of truth
+            await updateItem(with: media)
             return .success(media)
         case .failure(let error):
             return .failure(.repositoryError(error))
         }
+    }
+    
+    // MARK: - Source of Truth Updates
+    
+    @MainActor
+    private func updateItem(with loadedMedia: Media) {
+        // Find and update the item in the array
+        if let index = items.firstIndex(where: { $0.id == loadedMedia.id }) {
+            items[index] = loadedMedia
+        }
+    }
+    
+    // Public method to get loaded media
+    func getLoadedMedia(at index: Int) -> Media? {
+        guard index < items.count else { return nil }
+        return items[index]
     }
 }
 
