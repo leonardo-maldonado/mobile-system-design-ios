@@ -11,7 +11,7 @@ class ImageGalleryViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<Section, Media>!
     private var cancellables = Set<AnyCancellable>()
-    private var viewModel: ImageGalleryViewModel = .init()
+    private var viewModel: ImageGalleryViewModel!
             
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -19,8 +19,11 @@ class ImageGalleryViewController: UIViewController {
         configureCollectionView()
         configureDataSource()
         configureDataSourceHeader()
-        bindItems()
-        viewModel.loadAll()
+        
+        if viewModel != nil {
+            bindItems()
+            viewModel.loadAll()
+        }
     }
     
     func createLayout() -> UICollectionViewCompositionalLayout {
@@ -151,9 +154,19 @@ class ImageGalleryViewController: UIViewController {
     // MARK: - Coordinator Bridge
     
     weak var interactable: ImageGalleryInteractable?
-    
+
     func setInteractable(_ interactable: ImageGalleryInteractable) {
         self.interactable = interactable
+    }
+
+    @MainActor
+    func createViewModel() {
+        let viewModel = ImageGalleryViewModel() // No modelContext parameter needed
+        self.viewModel = viewModel
+        
+        cancellables.removeAll()
+        bindItems()
+        viewModel.loadAll()
     }
 }
 
@@ -178,6 +191,16 @@ extension ImageGalleryViewController: UICollectionViewDelegate {
         print("Cell tapped at: \(indexPath.section), row \(indexPath.item)")
 
         let item = viewModel.items[indexPath.item]
-        interactable?.didSelectMedia(item) 
+        Task {
+            let result = await viewModel.prefetch(for: item)
+            await MainActor.run {
+                switch result {
+                case .success(let media):
+                    self.interactable?.didSelectMedia(media) // up-to-date media with data
+                case .failure:
+                    self.interactable?.didSelectMedia(item)  // fallback
+                }
+            }
+        }
     }
 }

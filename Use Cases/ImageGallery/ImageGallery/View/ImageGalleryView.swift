@@ -6,6 +6,10 @@ struct ImageGalleryView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> ImageGalleryViewController {
         let controller = ImageGalleryViewController()
         controller.setInteractable(coordinator) // Connect UIKit to coordinator
+        
+        // Create view model (no modelContext needed)
+        controller.createViewModel()
+        
         return controller
     }
     

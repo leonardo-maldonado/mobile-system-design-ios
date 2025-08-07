@@ -33,11 +33,11 @@ extension AsyncRetryable {
     }
 }
 
-protocol MediaRemoteDataSourceProtocol {
+protocol MediaRemoteDataSourceProtocol: Sendable {
     func downloadImage(from url: URL) async throws -> Data
 }
 
-class MediaRemoteDataSource: MediaRemoteDataSourceProtocol {
+final class MediaRemoteDataSource: MediaRemoteDataSourceProtocol {
     
     enum NetworkError: Error {
         case invalidResponse
