@@ -7,11 +7,11 @@
 
 import Foundation
 
-protocol MediaURLProviderProtocol {
+protocol MediaURLProviderProtocol: Sendable {
     func getImageURLs() -> [URL]
 }
 
-class MediaURLProvider: MediaURLProviderProtocol {
+final class MediaURLProvider: MediaURLProviderProtocol {
     func getImageURLs() -> [URL] {
         // In production, this would:
         // - Call an API to get image URLs
@@ -26,7 +26,7 @@ class MediaURLProvider: MediaURLProviderProtocol {
 
 // MARK: - Test/Demo Implementation
 #if DEBUG
-class MockMediaURLProvider: MediaURLProviderProtocol {
+final class MockMediaURLProvider: MediaURLProviderProtocol {
     func getImageURLs() -> [URL] {
         let pinnedsUrls = (1...10).compactMap { 
             URL(string: "https://picsum.photos/200/200?random=\($0)") 

@@ -17,9 +17,11 @@ class ImageGalleryViewModel: ObservableObject {
     }
     
     // Convenience init with conditional URL provider
+    @MainActor
     convenience init() {
         let remoteDataSource = MediaRemoteDataSource()
-        let localDataSource = MediaLocalDataSource()
+        
+        let localDataSource = MediaLocalDataSource() // No modelContext parameter
         
         #if DEBUG
         let urlProvider = MockMediaURLProvider() // Demo URLs for development
@@ -57,9 +59,9 @@ class ImageGalleryViewModel: ObservableObject {
     
     @MainActor
     private func updateItem(with loadedMedia: Media) {
-        // Find and update the item in the array
+        // Mutate existing instance so existing references (e.g., detail view) observe updated data
         if let index = items.firstIndex(where: { $0.id == loadedMedia.id }) {
-            items[index] = loadedMedia
+            items[index].data = loadedMedia.data
         }
     }
     

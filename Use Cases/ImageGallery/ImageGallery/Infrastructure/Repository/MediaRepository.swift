@@ -7,7 +7,7 @@
 
 import Foundation
 
-protocol MediaRepositoryProtocol {
+protocol MediaRepositoryProtocol: Sendable {
     func loadAllMedia() -> [Media]
     func fetchImage(for media: Media) async -> Result<Media, MediaError>
 }
@@ -18,7 +18,7 @@ enum MediaError: Error {
     case unknown
 }
 
-class MediaRepository: MediaRepositoryProtocol {
+final class MediaRepository: MediaRepositoryProtocol {
     
     private let remoteDataSource: MediaRemoteDataSourceProtocol
     private let localDataSource: MediaLocalDataSourceProtocol
@@ -48,18 +48,49 @@ class MediaRepository: MediaRepositoryProtocol {
         return pinnedItems + recentsItems
     }
     
-    @MainActor
     func fetchImage(for media: Media) async -> Result<Media, MediaError> {
-        if let cached = localDataSource.getCachedMedia(for: media.url) {
+        if let cached = await localDataSource.getCachedMedia(for: media.url) {
             switch cached {
             case .ready(let cachedMedia):
-                print("Getting image from cache...")
-                return .success(cachedMedia)
+                print("Getting image from memory cache...")
+                let updatedMedia = Media(
+                    id: media.id,
+                    url: media.url,
+                    data: cachedMedia.data,
+                    type: media.type,
+                    accessibilityLabel: media.accessibilityLabel
+                )
+                return .success(updatedMedia)
             case .inProgress(let task):
                 print("Image download already in-progress...")
                 do {
                     let result = try await task.value
-                    localDataSource.setCachedMedia(.ready(result), for: media.url)
+                    await localDataSource.setCachedMedia(.ready(result), for: media.url)
+                    return .success(result)
+                } catch {
+                    return .failure(.networkError(error))
+                }
+            }
+        }
+        
+        // Check disk cache asynchronously (to avoid blocking main thread)
+        if let cached = await localDataSource.getCachedMediaFromDisk(for: media.url) {
+            switch cached {
+            case .ready(let cachedMedia):
+                print("Getting image from disk cache...")
+                let updatedMedia = Media(
+                    id: media.id,
+                    url: media.url,
+                    data: cachedMedia.data,
+                    type: media.type,
+                    accessibilityLabel: media.accessibilityLabel
+                )
+                return .success(updatedMedia)
+            case .inProgress(let task):
+                print("Image download already in-progress...")
+                do {
+                    let result = try await task.value
+                    await localDataSource.setCachedMedia(.ready(result), for: media.url)
                     return .success(result)
                 } catch {
                     return .failure(.networkError(error))
@@ -87,11 +118,11 @@ class MediaRepository: MediaRepositoryProtocol {
             }
         }
         
-        localDataSource.setCachedMedia(.inProgress(task), for: media.url)
+        await localDataSource.setCachedMedia(.inProgress(task), for: media.url)
         
         do {
             let result = try await task.value
-            localDataSource.setCachedMedia(.ready(result), for: media.url)
+            await localDataSource.setCachedMedia(.ready(result), for: media.url)
             return .success(result)
         } catch {
             return .failure(.networkError(error))
