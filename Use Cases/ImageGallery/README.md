@@ -36,35 +36,35 @@ This Image Gallery demonstrates a production-ready implementation of a high-perf
 
 ```mermaid
 graph LR
-    subgraph "Presentation Layer"
+    subgraph PRES["Presentation Layer"]
         VC[ViewController]
         VM[ViewModel]
         V[Views]
         E[Extensions]
     end
-    
-    subgraph "Domain Layer"
+
+    subgraph DOM["Domain Layer"]
         ME[Media Entity]
         P[Protocols]
         UC[Use Cases]
     end
-    
-    subgraph "Infrastructure Layer"
+
+    subgraph INF["Infrastructure Layer"]
         R[Repository]
         DS[DataSources]
         C[Caching]
         N[Networking]
     end
-    
+
     VM --> P
     P --> R
     R --> DS
     R --> C
     DS --> N
-    
-    style "Presentation Layer" fill:#e1f5fe
-    style "Domain Layer" fill:#f3e5f5
-    style "Infrastructure Layer" fill:#e8f5e8
+
+    style PRES fill:#e1f5fe
+    style DOM fill:#f3e5f5
+    style INF fill:#e8f5e8
 ```
 
 ### Domain Layer
