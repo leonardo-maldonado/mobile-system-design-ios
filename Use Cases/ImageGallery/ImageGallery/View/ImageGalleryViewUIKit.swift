@@ -175,7 +175,7 @@ extension ImageGalleryViewController: UICollectionViewDataSourcePrefetching {
         _ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath])
     {
         for indexPath in indexPaths {
-            let item = viewModel.items[indexPath.item]
+            guard let item = dataSource.itemIdentifier(for: indexPath) else { return }
             weak var viewModel = self.viewModel
             Task {
                 guard let viewModel else { return }
@@ -190,7 +190,8 @@ extension ImageGalleryViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         print("Cell tapped at: \(indexPath.section), row \(indexPath.item)")
 
-        let item = viewModel.items[indexPath.item]
+        guard let item = dataSource.itemIdentifier(for: indexPath) else { return }
+
         Task {
             let result = await viewModel.prefetch(for: item)
             await MainActor.run {
