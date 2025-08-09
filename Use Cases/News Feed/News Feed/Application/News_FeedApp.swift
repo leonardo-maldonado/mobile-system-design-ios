@@ -11,7 +11,13 @@ import SwiftUI
 struct News_FeedApp: App {
     var body: some Scene {
         WindowGroup {
-            NewsFeedScreen()
+            NewsFeedScreen(
+                repository:
+                    PostRepository(
+                        remoteDataSource: PostRemoteDataSource(),
+                        localDataSource: PostLocalDataSource()
+                    )
+            )
         }
     }
 }

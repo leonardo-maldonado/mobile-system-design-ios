@@ -6,6 +6,6 @@
 //
 
 struct PaginationMetadata {
-    
+    var totalCount: Int
 }
 
