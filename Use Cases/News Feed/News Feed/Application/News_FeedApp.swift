@@ -9,25 +9,12 @@ import SwiftUI
 
 @main
 struct News_FeedApp: App {
+    init() {
+        AppContainer.configure()
+    }
     var body: some Scene {
         WindowGroup {
-            NewsFeedScreen(
-                repository:
-                    PostRepository(
-                        remoteDataSource: {
-                            #if DEBUG
-                            let http = URLSessionHTTPClient(
-                                config: HTTPClientConfig(),
-                                interceptors: [FixturesInterceptor()]
-                            )
-                            return PostRemoteDataSource(httpClient: http)
-                            #else
-                            return PostRemoteDataSource()
-                            #endif
-                        }(),
-                        localDataSource: PostLocalDataSource()
-                    )
-            )
+            NewsFeedScreen(repository: Container.shared.resolve(PostRepositoryFetching.self))
         }
     }
 }
