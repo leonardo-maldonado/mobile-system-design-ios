@@ -14,7 +14,17 @@ struct News_FeedApp: App {
             NewsFeedScreen(
                 repository:
                     PostRepository(
-                        remoteDataSource: PostRemoteDataSource(),
+                        remoteDataSource: {
+                            #if DEBUG
+                            let http = URLSessionHTTPClient(
+                                config: HTTPClientConfig(),
+                                interceptors: [FixturesInterceptor()]
+                            )
+                            return PostRemoteDataSource(httpClient: http)
+                            #else
+                            return PostRemoteDataSource()
+                            #endif
+                        }(),
                         localDataSource: PostLocalDataSource()
                     )
             )

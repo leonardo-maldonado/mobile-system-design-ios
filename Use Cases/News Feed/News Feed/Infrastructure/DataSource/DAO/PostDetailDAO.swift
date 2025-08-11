@@ -59,3 +59,29 @@ final class PostAttachmentDAO {
     }
 }
 
+private let detailISO8601: ISO8601DateFormatter = {
+    let f = ISO8601DateFormatter()
+    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return f
+}()
+
+extension PostAttachmentDAO {
+    func toDomain() -> PostAttachement {
+        PostAttachement(contentUrl: contentUrl, type: type, caption: caption)
+    }
+}
+
+extension PostDetailDAO {
+    func toDomain() -> PostDetail {
+        PostDetail(
+            id: id,
+            content: content,
+            author: AuthorPreview(id: authorId, name: authorName, profileImageThumbnailURL: authorProfileImageThumbnailURL),
+            createdAt: detailISO8601.string(from: createdAt),
+            likesCount: likesCount,
+            liked: liked,
+            sharedCount: sharedCount,
+            attachments: attachments.map { $0.toDomain() }
+        )
+    }
+}

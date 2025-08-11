@@ -12,8 +12,7 @@ import SwiftData
 final class PostDAO {
     @Attribute(.unique) var id: String
     var contentSummary: String
-    var authorId: String
-    var authorName: String
+    var author: String
     var createdAt: Date
     var liked: Bool
     var likeCount: Int
@@ -23,8 +22,7 @@ final class PostDAO {
     init(
         id: String,
         contentSummary: String,
-        authorId: String,
-        authorName: String,
+        author: String,
         createdAt: Date,
         liked: Bool,
         likeCount: Int,
@@ -33,12 +31,32 @@ final class PostDAO {
     ) {
         self.id = id
         self.contentSummary = contentSummary
-        self.authorId = authorId
-        self.authorName = authorName
+        self.author = author
         self.createdAt = createdAt
         self.liked = liked
         self.likeCount = likeCount
         self.attachmentCount = attachmentCount
         self.attachmentPreviewImageUrl = attachmentPreviewImageUrl
+    }
+}
+
+private let postISO8601: ISO8601DateFormatter = {
+    let f = ISO8601DateFormatter()
+    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return f
+}()
+
+extension PostDAO {
+    func toDomain() -> PostPreview {
+        PostPreview(
+            postId: id,
+            contentSummary: contentSummary,
+            author: author,
+            createdAt: postISO8601.string(from: createdAt),
+            liked: liked,
+            likeCount: likeCount,
+            attachtmentCount: attachmentCount,
+            attachmentPreviewImageUrl: attachmentPreviewImageUrl
+        )
     }
 }

@@ -15,24 +15,23 @@ protocol PostRemoteDataFetching {
 }
 
 actor PostRemoteDataSource: PostRemoteDataFetching {
+    
+    var httpClient: URLSessionHTTPClient
+    
+    init(httpClient: URLSessionHTTPClient = .init(config: HTTPClientConfig())) {
+        self.httpClient = httpClient
+    }
+    
     func fetchFeed(pageToken: String?) async throws -> FeedAPIResponse {
-        return FeedAPIResponse(feed: [], paging: FeedAPIResponse.PaginationMetaData())
+        let endpoint = Endpoint(path: "/feed", method: .get)
+        let response: FeedAPIResponse = try await httpClient.send(endpoint)
+        return response
     }
     
     func fetchPostDetail(id: String) async throws -> PostDetailAPIResponse {
-        return PostDetailAPIResponse(
-            post:
-                PostDetail(
-                    id: "",
-                    content: "",
-                    author:
-                        AuthorPreview(id: "", name: ""),
-                    createdAt: "",
-                    likesCount: 0,
-                    liked: true,
-                    sharedCount: 1,
-                    attachments: [])
-        )
+        let endpoint = Endpoint(path: "/posts/\(id)", method: .get)
+        let response: PostDetailAPIResponse = try await httpClient.send(endpoint)
+        return response
     }
     
     func createPost(_ request: NewPostRequest) async throws {

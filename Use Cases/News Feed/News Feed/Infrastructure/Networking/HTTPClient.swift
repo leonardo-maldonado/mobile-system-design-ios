@@ -34,7 +34,7 @@ struct Endpoint {
 // MARK: - Configuration
 
 struct HTTPClientConfig {
-    let baseURL: URL
+    let baseURL: URL = URL(string: "https://newsapi.org/v2/")!
     var timeout: TimeInterval = 30
     var cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy
     var defaultHeaders: [String: String] = [
@@ -200,8 +200,11 @@ struct URLSessionHTTPClient: HTTPClient {
     private func buildRequest(for endpoint: Endpoint, bodyData: Data?) throws -> URLRequest {
         // Compose URL
         guard var components = URLComponents(url: config.baseURL, resolvingAgainstBaseURL: false) else { throw HTTPError.invalidURL }
-        let path = endpoint.path.hasPrefix("/") ? String(endpoint.path.dropFirst()) : endpoint.path
-        components.path = (components.path) + "/" + path
+        if endpoint.path.hasPrefix("/") {
+            components.path = (components.path) + endpoint.path
+        } else {
+            components.path = (components.path) + "/" + endpoint.path
+        }
         var query = config.additionalQueryItems
         if !endpoint.queryItems.isEmpty { query.append(contentsOf: endpoint.queryItems) }
         if !query.isEmpty { components.queryItems = query }
@@ -237,6 +240,15 @@ struct URLSessionHTTPClient: HTTPClient {
             for interceptor in interceptors { interceptor.willSend(request) }
 
             do {
+#if DEBUG
+                if let fixture = request.value(forHTTPHeaderField: "X-Debug-Fixture-URL"), let url = URL(string: fixture), url.isFileURL {
+                    let data = try Data(contentsOf: url)
+                    let http = HTTPURLResponse(url: request.url ?? url, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+                    for interceptor in interceptors { interceptor.didReceive(data: data, response: http) }
+                    if config.isLoggingEnabled { logResponse(response: http, data: data) }
+                    return data
+                }
+#endif
                 let (data, response) = try await session.data(for: request)
                 guard let http = response as? HTTPURLResponse else { throw HTTPError.invalidResponse }
                 for interceptor in interceptors { interceptor.didReceive(data: data, response: response) }

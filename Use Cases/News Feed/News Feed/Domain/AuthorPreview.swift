@@ -5,7 +5,7 @@
 //  Created by Leonardo Maldonado on 8/8/25.
 //
 
-struct AuthorPreview {
+struct AuthorPreview: Decodable {
     var id: String
     var name: String
     var profileImageThumbnailURL: String?

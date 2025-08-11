@@ -5,7 +5,7 @@
 //  Created by Leonardo Maldonado on 8/8/25.
 //
 
-struct PostDetail {
+struct PostDetail: Decodable {
     var id: String
     var content: String
     var author: AuthorPreview

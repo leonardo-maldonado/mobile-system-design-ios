@@ -32,19 +32,7 @@ final class PostRepository: PostRepositoryFetching {
     func fetchPosts() async throws -> [PostPreview] {
         // Try local cache/disk first
         if let local = try? await localDataSource.loadFeed(), !local.isEmpty {
-            return local.map { dao in
-                // TODO: Map PostDAO -> PostPreview when DAO is defined
-                PostPreview(
-                    postId: "",
-                    contentSummary: "",
-                    author: "",
-                    createdAt: "",
-                    liked: false,
-                    likeCount: 0,
-                    attachtmentCount: 0,
-                    attachmentPreviewImageUrl: nil
-                )
-            }
+            return local.map { $0.toDomain() }
         }
 
         // Fallback to remote
@@ -65,17 +53,7 @@ final class PostRepository: PostRepositoryFetching {
 
         // Disk
         if let dao = try? await localDataSource.loadPost(id: id) {
-            // TODO: Map PostDetailDAO -> PostDetail when DAO is defined
-            let detail = PostDetail(
-                id: id,
-                content: "",
-                author: AuthorPreview(id: "", name: "", profileImageThumbnailURL: nil),
-                createdAt: "",
-                likesCount: 0,
-                liked: false,
-                sharedCount: 0,
-                attachments: []
-            )
+            let detail = dao.toDomain()
             await postDetailCache[id: id] = .ready(detail)
             return detail
         }

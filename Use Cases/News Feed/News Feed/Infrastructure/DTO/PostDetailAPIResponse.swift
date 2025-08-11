@@ -5,6 +5,6 @@
 //  Created by Leonardo Maldonado on 8/8/25.
 //
 
-struct PostDetailAPIResponse {
+struct PostDetailAPIResponse: Decodable {
     var post: PostDetail
 }

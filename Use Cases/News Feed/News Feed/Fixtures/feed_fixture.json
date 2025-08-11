@@ -1,0 +1,27 @@
+{
+  "feed": [
+    {
+      "postId": "p_1",
+      "contentSummary": "Hello from fixtures! This is a summary.",
+      "author": "Alice",
+      "createdAt": "2025-08-09T18:00:00Z",
+      "liked": true,
+      "likeCount": 12,
+      "attachtmentCount": 1,
+      "attachmentPreviewImageUrl": "https://example.com/image1.jpg"
+    },
+    {
+      "postId": "p_2",
+      "contentSummary": "Another post in the feed.",
+      "author": "Bob",
+      "createdAt": "2025-08-09T17:30:00Z",
+      "liked": false,
+      "likeCount": 3,
+      "attachtmentCount": 0,
+      "attachmentPreviewImageUrl": null
+    }
+  ],
+  "paging": { "next": null }
+}
+
+
