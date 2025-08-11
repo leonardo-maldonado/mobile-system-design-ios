@@ -7,11 +7,16 @@ struct FixturesInterceptor: HTTPRequestInterceptor {
         "feed": "feed_fixture",
         "posts": "post_detail_fixture"
     ]
+    // Optional multiplier per route to expand array payloads (e.g., feed)
+    var multipliers: [String: Int] = [
+        "feed": 100
+    ]
     let bundle: Bundle
 
-    init(bundle: Bundle = .main, routes: [String: String] = [:]) {
+    init(bundle: Bundle = .main, routes: [String: String] = [:], multipliers: [String: Int] = [:]) {
         self.bundle = bundle
         if !routes.isEmpty { self.routes = routes }
+        if !multipliers.isEmpty { self.multipliers = multipliers }
     }
 
     func adapt(_ request: URLRequest) async throws -> URLRequest {
@@ -27,6 +32,9 @@ struct FixturesInterceptor: HTTPRequestInterceptor {
         mutated.setValue("application/json", forHTTPHeaderField: "Accept")
         mutated.setValue("fixture:\(fixtureName)", forHTTPHeaderField: "X-Debug-Fixture")
         mutated.setValue(fileURL.absoluteString, forHTTPHeaderField: "X-Debug-Fixture-URL")
+        if let mult = multipliers.first(where: { key, _ in url.path.contains("/\(key)") || url.lastPathComponent == key })?.value, mult > 1 {
+            mutated.setValue(String(mult), forHTTPHeaderField: "X-Debug-Fixture-Multiply")
+        }
         return mutated
     }
 
