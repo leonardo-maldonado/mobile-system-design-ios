@@ -242,7 +242,18 @@ struct URLSessionHTTPClient: HTTPClient {
             do {
 #if DEBUG
                 if let fixture = request.value(forHTTPHeaderField: "X-Debug-Fixture-URL"), let url = URL(string: fixture), url.isFileURL {
-                    let data = try Data(contentsOf: url)
+                    var data = try Data(contentsOf: url)
+                    if let multHeader = request.value(forHTTPHeaderField: "X-Debug-Fixture-Multiply"), let mult = Int(multHeader), mult > 1 {
+                        // If fixture is a FeedAPIResponse, multiply the feed array
+                        if var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           var arr = json["feed"] as? [[String: Any]], !arr.isEmpty {
+                            var expanded: [[String: Any]] = []
+                            expanded.reserveCapacity(arr.count * mult)
+                            for i in 0..<mult { for var item in arr { item["postId"] = "\(item["postId"] ?? "post")_\(i)"; expanded.append(item) } }
+                            json["feed"] = expanded
+                            data = try JSONSerialization.data(withJSONObject: json)
+                        }
+                    }
                     let http = HTTPURLResponse(url: request.url ?? url, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
                     for interceptor in interceptors { interceptor.didReceive(data: data, response: http) }
                     if config.isLoggingEnabled { logResponse(response: http, data: data) }
