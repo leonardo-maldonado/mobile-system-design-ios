@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import PhotosUI
+import UIKit
 
 struct CreatePostScreen: View {
     @Environment(\.dismiss) private var dismiss
@@ -17,35 +19,31 @@ struct CreatePostScreen: View {
     }
 
     var body: some View {
-        Form {
-            Section("Content") {
-                TextField("What's happening?", text: $state.content, axis: .vertical)
-                    .lineLimit(5...10)
-            }
-            Section("Attachments (URL)") {
-                ForEach($state.attachments.indices, id: \.self) { idx in
-                    HStack {
-                        TextField("URL", text: $state.attachments[idx].contentUrl)
-                        TextField("Type", text: $state.attachments[idx].type)
-                    }
+        VStack(spacing: 0) {
+            switch state.step {
+            case .media:
+                CreatePostMediaStep(selected: $state.selectedItems, images: $state.selectedImages) {
+                    withAnimation { state.step = .edit }
                 }
-                Button("Add attachment") { state.attachments.append(.init(contentUrl: "", type: "image", caption: nil)) }
+            case .edit:
+                CreatePostEditStep(images: $state.selectedImages, brightness: $state.brightness, contrast: $state.contrast) {
+                    state.generateAttachmentsFromSelected()
+                    withAnimation { state.step = .compose }
+                } onBack: {
+                    withAnimation { state.step = .media }
+                }
+            case .compose:
+                CreatePostComposeStep(content: $state.content, attachments: $state.attachments, isSubmitting: $state.isSubmitting, onSubmit: {
+                    Task { await submit() }
+                }, onBack: {
+                    withAnimation { state.step = .edit }
+                })
             }
         }
-        .navigationTitle("New Post")
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) { Button("Cancel", role: .cancel) { dismiss() } }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Publish") { Task { await submit() } }
-                    .disabled(state.isSubmitting || state.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-        }
-        .overlay(alignment: .bottom) {
-            if let error = state.errorMessage { banner(error) }
-        }
-        .overlay {
-            if state.isSubmitting { ProgressView().controlSize(.large) }
-        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .topBarLeading) { Button("Cancel", role: .cancel) { dismiss() } } }
+        .overlay(alignment: .bottom) { if let error = state.errorMessage { banner(error) } }
+        .overlay { if state.isSubmitting { ProgressView().controlSize(.large) } }
     }
 
     private func banner(_ message: String) -> some View {
@@ -74,12 +72,37 @@ struct CreatePostScreen: View {
 // MARK: - Local View State
 extension CreatePostScreen {
     struct ViewState {
+        enum Step { case media, edit, compose }
+        var step: Step = .media
         var content: String = ""
         var attachments: [PostAttachement] = []
         var isSubmitting = false
         var errorMessage: String?
+
+        // Media
+        var selectedItems: [PhotosPickerItem] = []
+        var selectedImages: [UIImage] = []
+        var brightness: Double = 0
+        var contrast: Double = 1
+
+        mutating func generateAttachmentsFromSelected() {
+            attachments = selectedImages.enumerated().map { idx, _ in
+                PostAttachement(contentUrl: "local://image_\(idx)", type: "image", caption: nil)
+            }
+        }
     }
 }
+
+private extension Binding where Value == String? {
+    func or(_ fallback: String = "") -> Binding<String> {
+        Binding<String>(
+            get: { self.wrappedValue ?? fallback },
+            set: { self.wrappedValue = $0.isEmpty ? nil : $0 }
+        )
+    }
+}
+
+// Moved step views into separate files for readability: CreatePostMediaStep, CreatePostEditStep, CreatePostComposeStep
 
 #Preview {
     let repo = PostRepository(
