@@ -31,9 +31,7 @@ struct NewsFeedScreen: View {
             .navigationTitle("News Feed")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink(value: Route.createPost) {
-                        Image(systemName: "square.and.pencil")
-                    }
+                    NavigationLink(value: Route.createPost) { Image(systemName: "square.and.pencil") }
                 }
             }
             .navigationDestination(for: Route.self) { route in
@@ -46,32 +44,79 @@ struct NewsFeedScreen: View {
             }
             .task { await loadInitial() }
             .refreshable { await reload() }
+            .overlay(alignment: .bottomTrailing) { composeButton }
         }
     }
 
     private var listView: some View {
-        List(state.posts, id: \.postId) { item in
-            Button {
-                state.path.append(.detail(item.postId))
-            } label: {
-                HStack(alignment: .top, spacing: 12) {
-                    Circle().fill(Color.gray.opacity(0.2)).frame(width: 40, height: 40)
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(item.author).font(.headline)
-                        Text(item.contentSummary).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
-                        HStack(spacing: 16) {
-                            Label("\(item.likeCount)", systemImage: item.liked ? "heart.fill" : "heart")
-                                .foregroundStyle(item.liked ? .red : .secondary)
-                            if let url = item.attachmentPreviewImageUrl { Label(url, systemImage: "photo") }
-                        }
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    }
+        List {
+            ForEach(state.posts, id: \.postId) { item in
+                Button { state.path.append(.detail(item.postId)) } label: {
+                    FeedRow(item: item)
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
             }
         }
         .listStyle(.plain)
+    }
+
+    struct FeedRow: View {
+        let item: PostPreview
+        var body: some View {
+            HStack(alignment: .top, spacing: 12) {
+                Circle().fill(Color.gray.opacity(0.2)).frame(width: 44, height: 44)
+                    .overlay(Text(String(item.author.prefix(1))).font(.headline))
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(item.author).font(.headline)
+                        Spacer()
+                        Text(Self.relative(item.createdAt)).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text(item.contentSummary).font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(3)
+                    if let urlString = item.attachmentPreviewImageUrl, let url = URL(string: urlString) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty: Rectangle().fill(Color.gray.opacity(0.15)).frame(height: 180).redacted(reason: .placeholder)
+                            case .success(let img): img.resizable().scaledToFill().frame(height: 180).clipped().cornerRadius(8)
+                            case .failure: Rectangle().fill(Color.gray.opacity(0.15)).frame(height: 180).overlay(Image(systemName: "photo").foregroundStyle(.secondary))
+                            @unknown default: EmptyView()
+                            }
+                        }
+                    }
+                    HStack(spacing: 18) {
+                        Label("\(item.likeCount)", systemImage: item.liked ? "heart.fill" : "heart")
+                            .foregroundStyle(item.liked ? .red : .secondary)
+                        if item.attachtmentCount > 0 {
+                            Label("\(item.attachtmentCount)", systemImage: "photo")
+                        }
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+
+        private static let iso = ISO8601DateFormatter()
+        private static let rel = RelativeDateTimeFormatter()
+        private static func relative(_ isoString: String) -> String {
+            if let date = iso.date(from: isoString) { return rel.localizedString(for: date, relativeTo: Date()) }
+            return isoString
+        }
+    }
+
+    private var composeButton: some View {
+        Button {
+            state.path.append(.createPost)
+        } label: {
+            Image(systemName: "square.and.pencil").font(.title2)
+                .padding(16)
+                .background(.thinMaterial, in: Circle())
+        }
+        .padding(16)
     }
 
     private var emptyView: some View {
