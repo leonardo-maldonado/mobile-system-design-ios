@@ -14,7 +14,13 @@ struct News_FeedApp: App {
     }
     var body: some Scene {
         WindowGroup {
-            NewsFeedScreen(repository: Container.shared.resolve(PostRepositoryFetching.self))
+            let repo = Container.shared.resolve(PostRepositoryFetching.self)
+            let router = AppRouter(modules: [
+                AnyModuleRouter(FeedRouter(repository: repo)) { vi in
+                    if case let .feed(i) = vi { return i } else { return nil }
+                }
+            ])
+            RootView(router: router)
         }
     }
 }

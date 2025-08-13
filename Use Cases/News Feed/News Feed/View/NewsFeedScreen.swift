@@ -9,6 +9,7 @@ import SwiftUI
 
 struct NewsFeedScreen: View {
     @State private var state = ViewState()
+    @Environment(\.viewInteraction) private var interaction
     private let repository: PostRepositoryFetching
 
     init(repository: PostRepositoryFetching) {
@@ -16,42 +17,31 @@ struct NewsFeedScreen: View {
     }
 
     var body: some View {
-        NavigationStack(path: $state.path) {
-            Group {
-                if state.isLoadingInitial {
-                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error = state.errorMessage {
-                    errorView(error)
-                } else if state.posts.isEmpty {
-                    emptyView
-                } else {
-                    listView
-                }
+        Group {
+            if state.isLoadingInitial {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = state.errorMessage {
+                errorView(error)
+            } else if state.posts.isEmpty {
+                emptyView
+            } else {
+                listView
             }
-            .navigationTitle("News Feed")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink(value: Route.createPost) { Image(systemName: "square.and.pencil") }
-                }
-            }
-            .navigationDestination(for: Route.self) { route in
-                switch route {
-                case .detail(let id):
-                    NewsFeedDetailScreen(repository: repository, postId: id)
-                case .createPost:
-                    CreatePostScreen(repository: repository)
-                }
-            }
-            .task { await loadInitial() }
-            .refreshable { await reload() }
-            .overlay(alignment: .bottomTrailing) { composeButton }
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { interaction?.send(.feed(.openCreatePost)) } label: { Image(systemName: "square.and.pencil") }
+            }
+        }
+        .task { await loadInitial() }
+        .refreshable { await reload() }
+        .overlay(alignment: .bottomTrailing) { composeButton }
     }
 
     private var listView: some View {
         List {
             ForEach(state.posts, id: \.postId) { item in
-                Button { state.path.append(.detail(item.postId)) } label: {
+                Button { interaction?.send(.feed(.openDetail(item.postId))) } label: {
                     FeedRow(item: item)
                 }
                 .buttonStyle(.plain)
@@ -110,7 +100,7 @@ struct NewsFeedScreen: View {
 
     private var composeButton: some View {
         Button {
-            state.path.append(.createPost)
+            interaction?.send(.feed(.openCreatePost))
         } label: {
             Image(systemName: "square.and.pencil").font(.title2)
                 .padding(16)
@@ -133,6 +123,7 @@ struct NewsFeedScreen: View {
     }
 
     // MARK: - Actions
+    
     private func loadInitial() async {
         guard state.posts.isEmpty else { return }
         await reload()
@@ -151,14 +142,12 @@ struct NewsFeedScreen: View {
 }
 
 // MARK: - Local View State
-extension NewsFeedScreen {
-    enum Route: Hashable { case detail(String), createPost }
 
+extension NewsFeedScreen {
     struct ViewState {
         var isLoadingInitial = false
         var errorMessage: String?
         var posts: [PostPreview] = []
-        var path: [Route] = []
     }
 }
 

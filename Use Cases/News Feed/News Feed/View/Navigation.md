@@ -12,15 +12,16 @@ A composable, decoupled navigation pattern for SwiftUI apps that keeps **views i
 4. [Quick Start](#quick-start)
 5. [App Router (Interaction Bus)](#app-router-interaction-bus)
 6. [Module Routers](#module-routers)
-7. [Environment Injection & View Ergonomics](#environment-injection--view-ergonomics)
-8. [Navigation Shell (Tabs + Stacks)](#navigation-shell-tabs--stacks)
-9. [Deep Links](#deep-links)
-10. [Middlewares](#middlewares)
-11. [Testing](#testing)
-12. [FAQ](#faq)
-13. [Migration Guide](#migration-guide)
-14. [Performance & Concurrency Notes](#performance--concurrency-notes)
-15. [Appendix: Protocols & Types](#appendix-protocols--types)
+7. [Type-Erasure Naming](#type-erasure-naming)
+8. [Environment Injection & View Ergonomics](#environment-injection--view-ergonomics)
+9. [Navigation Shell (Tabs + Stacks)](#navigation-shell-tabs--stacks)
+10. [Deep Links](#deep-links)
+11. [Middlewares](#middlewares)
+12. [Testing](#testing)
+13. [FAQ](#faq)
+14. [Migration Guide](#migration-guide)
+15. [Performance & Concurrency Notes](#performance--concurrency-notes)
+16. [Appendix: Protocols & Types](#appendix-protocols--types)
 
 ---
 
@@ -52,7 +53,7 @@ Typical SwiftUI navigation often couples views to destinations (e.g., `Navigatio
 [View] --(ViewInteraction)--> [AppRouter / Interaction Bus]
                                |  |  
                                |  └--> [Middleware(s)]
-                               └----> [ModuleRouterBox]*  (Toolbox, Story, ...)
+                                └----> [AnyModuleRouter]*  (Toolbox, Story, ...)
                                          |       |
                                          |       └--> destination(for: Route) -> AnyView
                                          └--> route(for: Interaction) -> Route?
@@ -97,12 +98,12 @@ struct ToolboxRouter {
 }
 ```
 
-3. **Wrap routers with type-erased boxes** and create the `AppRouter`:
+3. **Wrap routers with a type-erased wrapper (`AnyModuleRouter`)** and create the `AppRouter`:
 ```swift
 let appRouter = AppRouter(
   modules: [
-    ToolboxModuleBox(service: toolboxService),
-    StoryModuleBox(service: storyService)
+    AnyModuleRouter(ToolboxRouter(service: toolboxService)),
+    AnyModuleRouter(StoryRouter(service: storyService))
   ],
   middlewares: [AnalyticsMiddleware()]
 )
@@ -148,9 +149,6 @@ A module owns:
 - Mapping from **Route → Destination View** (`destination`).
 - Optional **Deep Link parser** (`route(from:)`).
 - Which **tab** a route belongs to.
-
-... (continue with the rest of README content including Environment, Shell, Deep Links, Middlewares, Testing, FAQ, Migration Guide, Performance, Appendix) ...
-
 
 ---
 
@@ -287,11 +285,11 @@ struct AnalyticsMiddleware: InteractionMiddleware {
 ## Testing
 
 **AppRouter tests:**
-- Inject a `FakeBox` that records the last interaction and returns a canned route.
+- Inject a `FakeAnyModuleRouter` (test double) that records the last interaction and returns a canned route.
 - Assert `selectedTab` changes and `navigationStacks` mutation when calling `send(_:)`.
 
 ```swift
-final class FakeBox: ModuleRouterBox {
+struct FakeAnyModuleRouter /* test double for AnyModuleRouter */ {
   var lastInteraction: ViewInteraction?
   var nextRoute: AnyHashable?
   func route(for i: ViewInteraction) -> AnyHashable? { lastInteraction = i; return nextRoute }
@@ -344,7 +342,7 @@ Switch to `NavigationPath` and make routes Codable.
 
 ## Appendix: Protocols & Types
 
-See the main README above for `AppTab`, `ViewInteraction`, `ViewInteractable`, `ModuleRouterBox`, `AppRouter` skeleton, and environment helpers.
+See the main README above for `AppTab`, `ViewInteraction`, `ViewInteractable`, `AnyModuleRouter`, `AppRouter` skeleton, and environment helpers.
 
 ---
 
