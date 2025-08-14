@@ -18,7 +18,7 @@ struct NewsFeedScreen: View {
 
     var body: some View {
         Group {
-            if state.isLoadingInitial {
+            if state.isLoading {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error = state.errorMessage {
                 errorView(error)
@@ -30,7 +30,7 @@ struct NewsFeedScreen: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { interaction?.send(.feed(.openCreatePost)) } label: { Image(systemName: "square.and.pencil") }
+                Button { interaction?.send(.feed(.composeRequested)) } label: { Image(systemName: "square.and.pencil") }
             }
         }
         .task { await loadInitial() }
@@ -41,7 +41,7 @@ struct NewsFeedScreen: View {
     private var listView: some View {
         List {
             ForEach(state.posts, id: \.postId) { item in
-                Button { interaction?.send(.feed(.openDetail(item.postId))) } label: {
+                Button { interaction?.send(.feed(.postSelected(id: item.postId))) } label: {
                     FeedRow(item: item)
                 }
                 .buttonStyle(.plain)
@@ -100,7 +100,7 @@ struct NewsFeedScreen: View {
 
     private var composeButton: some View {
         Button {
-            interaction?.send(.feed(.openCreatePost))
+            interaction?.send(.feed(.composeRequested))
         } label: {
             Image(systemName: "square.and.pencil").font(.title2)
                 .padding(16)
@@ -130,14 +130,14 @@ struct NewsFeedScreen: View {
     }
 
     private func reload() async {
-        await MainActor.run { state.isLoadingInitial = true; state.errorMessage = nil }
+        await MainActor.run { state.isLoading = true; state.errorMessage = nil }
         do {
             let posts = try await repository.fetchPosts()
             await MainActor.run { state.posts = posts }
         } catch {
             await MainActor.run { state.errorMessage = error.localizedDescription }
         }
-        await MainActor.run { state.isLoadingInitial = false }
+        await MainActor.run { state.isLoading = false }
     }
 }
 
@@ -145,7 +145,7 @@ struct NewsFeedScreen: View {
 
 extension NewsFeedScreen {
     struct ViewState {
-        var isLoadingInitial = false
+        var isLoading = false
         var errorMessage: String?
         var posts: [PostPreview] = []
     }

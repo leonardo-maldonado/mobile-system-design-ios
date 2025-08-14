@@ -89,6 +89,11 @@ graph LR
 - **CreatePostScreen**: Compose and publish a new post
 - **Local ViewState**: Each screen holds its own `ViewState` struct
 
+#### Interaction Naming Convention
+- Interactions should describe the user's intent, not destinations.
+- Prefer intent-based names like `postSelected(id:)` and `composeRequested` rather than `openDetail` or `openCreatePost`.
+- Module routers are responsible for mapping intent → route (e.g., `postSelected(id:)` → `.detail(id)`).
+
 ## 🎯 Technical Implementation
 
 ### Data Flow

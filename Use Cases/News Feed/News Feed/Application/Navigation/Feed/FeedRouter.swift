@@ -6,8 +6,8 @@ enum FeedRoute: Hashable {
 }
 
 enum FeedInteraction: Equatable {
-    case openDetail(String)
-    case openCreatePost
+    case postSelected(id: String)
+    case composeRequested
 }
 
 struct FeedRouter: ModuleRouter {
@@ -15,8 +15,10 @@ struct FeedRouter: ModuleRouter {
 
     func handleInteraction(_ interaction: FeedInteraction) -> FeedRoute? {
         switch interaction {
-        case .openDetail(let id): return .detail(id)
-        case .openCreatePost: return .createPost
+        case .postSelected(let id):
+            return .detail(id)
+        case .composeRequested:
+            return .createPost
         }
     }
 
