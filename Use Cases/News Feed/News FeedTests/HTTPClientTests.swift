@@ -76,7 +76,7 @@ struct HTTPClientTests {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
-        let httpConfig = HTTPClientConfig(baseURL: baseURL, isLoggingEnabled: false)
+        let httpConfig = HTTPClientConfig(isLoggingEnabled: false)
         return (URLSessionHTTPClient(config: httpConfig, session: session), MockURLProtocol.self)
     }
 }
