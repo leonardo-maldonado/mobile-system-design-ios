@@ -30,6 +30,7 @@ The News Feed demonstrates a production-ready social feed: browsing posts, viewi
 - **Async/Await** throughout networking and repository
 - **HTTPClient** abstraction with `URLSessionHTTPClient`
 - **RetryPolicy** with exponential backoff and jitter (via `Retrier` and policy)
+- **@Retryable Functionality** - Declarative retry logic similar to Java's @Retryable annotation
 - **SwiftData DAOs** for persistent models (PostDAO, PostDetailDAO, UserInteractionDAO)
 
 ## 🏛️ Architecture
@@ -249,9 +250,96 @@ News Feed/
 - [ ] Media attachments rendering in feed/detail
 - [ ] Offline mode and background sync for interactions
 - [ ] Analytics and logging hooks
+- [ ] Swift Macro implementation for @Retryable (requires Swift Package setup)
+
+## 🔄 Retryable Functionality
+
+The News Feed app includes a comprehensive retry system that provides declarative retry logic similar to Java's `@Retryable` annotation. This functionality is built on top of the existing `Retrier` infrastructure and offers multiple ways to add retry behavior to async operations.
+
+### Features
+
+- **Declarative Syntax**: Clean, readable retry logic similar to Java annotations
+- **Type-Safe**: Full Swift type safety with generics
+- **Customizable**: Configurable retry attempts, delays, and conditions
+- **True Macro Support**: `@Retryable` and `@RetryableWithCondition` macros for automatic retry
+- **Integration**: Seamlessly works with existing `Retrier` infrastructure
+
+### Usage Examples
+
+#### 1. Simple Retry (Default Settings)
+```swift
+@Retryable(maxAttempts: 3)
+func fetchPosts() async throws -> [PostPreview] {
+    try await repository.fetchPosts()
+}
+```
+
+#### 2. Custom Retry Settings
+```swift
+@Retryable(maxAttempts: 3, baseDelay: 1.0, maxDelay: 5.0)
+func updateInventory(productId: String) async throws {
+    try await inventoryClient.update(productId)
+}
+```
+
+#### 3. Conditional Retry Logic
+```swift
+@RetryableWithCondition(
+    maxAttempts: 3,
+    shouldRetry: { error, attempt in
+        return error is NetworkError && attempt < 3
+    }
+)
+func fetchData() async throws -> Data {
+    try await networkClient.fetch()
+}
+```
+
+#### 4. True Macro Usage
+```swift
+class MyService {
+    @Retryable(maxAttempts: 3)
+    func fetchData() async throws -> Data {
+        try await networkClient.fetch()
+    }
+}
+```
+
+### Integration with Data Sources
+
+The retryable functionality is applied directly to data source methods where network calls occur:
+
+```swift
+actor PostRemoteDataSource: PostRemoteDataFetching {
+    /// Fetch feed with automatic retry logic
+    @Retryable(maxAttempts: 3, baseDelay: 1.0)
+    func fetchFeed(pageToken: String?) async throws -> FeedAPIResponse {
+        let endpoint = Endpoint(path: "/feed", method: .get)
+        let response: FeedAPIResponse = try await httpClient.send(endpoint)
+        return response
+    }
+}
+```
+
+### Configuration Options
+
+- **maxAttempts**: Maximum number of retry attempts (default: 3)
+- **baseDelay**: Initial delay between retries in seconds (default: 0.5)
+- **maxDelay**: Maximum delay between retries in seconds (default: 5.0)
+- **jitter**: Random delay range to prevent thundering herd (default: 0.0...0.3)
+- **shouldRetry**: Custom closure to determine if retry should occur
+
+### Benefits
+
+- **Clean Code**: Declarative syntax reduces boilerplate
+- **Reusable**: Same retry logic across different operations
+- **Testable**: Comprehensive unit tests included
+- **Flexible**: Supports custom retry conditions and error handling
+- **Performance**: Built on efficient `Retrier` infrastructure
 
 ## 🧪 Testing
 
 - Unit tests for `HTTPClient` and repository flows
 - UI tests for feed loading, detail navigation, and create flow
+- **Retryable functionality tests**: Comprehensive test suite for retry logic
 
