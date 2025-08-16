@@ -97,6 +97,10 @@ final class PostRepository: PostRepositoryFetching {
             cache: postDetailCache
         )
         
+        if let error = result.error {
+            throw error
+        }
+        
         // Update cache with new state
         let updatedDetail = PostDetail(
             id: detail.id,
