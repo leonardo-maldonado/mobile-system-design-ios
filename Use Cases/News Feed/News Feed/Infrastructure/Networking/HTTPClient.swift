@@ -241,6 +241,16 @@ struct URLSessionHTTPClient: HTTPClient {
 
             do {
 #if DEBUG
+                // Handle interaction requests in debug mode
+                if let fixture = request.value(forHTTPHeaderField: "X-Debug-Fixture"), fixture.hasPrefix("interaction:") {
+                    // For interaction requests, return a success response with empty data
+                    let emptyResponse = "{}".data(using: .utf8)!
+                    let http = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+                    for interceptor in interceptors { interceptor.didReceive(data: emptyResponse, response: http) }
+                    if config.isLoggingEnabled { logResponse(response: http, data: emptyResponse) }
+                    return emptyResponse
+                }
+                
                 if let fixture = request.value(forHTTPHeaderField: "X-Debug-Fixture-URL"), let url = URL(string: fixture), url.isFileURL {
                     var data = try Data(contentsOf: url)
                     // If detail fixture contains multiple posts keyed by id, pick the requested id (fallback when no per-id file exists)
