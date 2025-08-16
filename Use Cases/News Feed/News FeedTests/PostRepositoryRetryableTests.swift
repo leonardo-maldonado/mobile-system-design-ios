@@ -14,14 +14,14 @@ final class PostRepositoryRetryableTests: XCTestCase {
     // MARK: - Test Properties
     
     private var remoteDataSource: PostRemoteDataSource!
-    private var mockHTTPClient: MockURLSessionHTTPClient!
+    private var mockHTTPClient: MockHTTPClient!
     private var cancellables: Set<AnyCancellable>!
     
     // MARK: - Setup and Teardown
     
     override func setUp() {
         super.setUp()
-        mockHTTPClient = MockURLSessionHTTPClient()
+        mockHTTPClient = MockHTTPClient()
         remoteDataSource = PostRemoteDataSource(httpClient: mockHTTPClient)
         cancellables = Set<AnyCancellable>()
     }
@@ -43,14 +43,19 @@ final class PostRepositoryRetryableTests: XCTestCase {
             if attemptCount < 3 {
                 throw NetworkError.serverError(500)
             }
-            return FeedAPIResponse(feed: [PostPreview.mock])
+            return FeedAPIResponse(
+                feed: [PostPreview.mock],
+                paging: FeedAPIResponse.PaginationMetaData(next: nil)
+            )
         }
         
         // When
         let result = try await remoteDataSource.fetchFeed(pageToken: nil)
         
         // Then
-        XCTAssertEqual(result.feed.count, 1)
+        await MainActor.run {
+            XCTAssertEqual(result.feed.count, 1)
+        }
         XCTAssertEqual(attemptCount, 3)
     }
     
@@ -101,10 +106,12 @@ final class PostRepositoryRetryableTests: XCTestCase {
         }
         
         // When
-        let result = try await remoteDataSource.fetchPostDetail(id: "test-id")
+        let result = try await remoteDataSource.fetchPostDetail(id: "p_11")
         
         // Then
-        XCTAssertEqual(result.post.id, PostDetail.mock.id)
+        await MainActor.run {
+            XCTAssertEqual(result.post.id, PostDetail.mock.id)
+        }
         XCTAssertEqual(attemptCount, 2)
     }
     
@@ -120,7 +127,7 @@ final class PostRepositoryRetryableTests: XCTestCase {
         }
         
         // When
-        let result = try await remoteDataSource.fetchPostDetail(id: "test-id")
+        let result = try await remoteDataSource.fetchPostDetail(id: "p_12")
         
         // Then
         XCTAssertEqual(result.post.id, PostDetail.mock.id)
@@ -137,7 +144,7 @@ final class PostRepositoryRetryableTests: XCTestCase {
         
         // When & Then
         do {
-            _ = try await remoteDataSource.fetchPostDetail(id: "test-id")
+            _ = try await remoteDataSource.fetchPostDetail(id: "p_13")
             XCTFail("Expected error to be thrown")
         } catch {
             XCTAssertEqual(attemptCount, 1) // Should not retry
@@ -155,9 +162,14 @@ final class PostRepositoryRetryableTests: XCTestCase {
             if attemptCount < 2 {
                 throw NetworkError.serverError(500)
             }
+            return EmptyResponse()
         }
         
-        let request = NewPostRequest(content: "Test post", attachments: [])
+        let request = NewPostRequest(
+            id: "p_14",
+            content: "Test post",
+            attachements: []
+        )
         
         // When
         try await remoteDataSource.createPost(request)
@@ -166,23 +178,28 @@ final class PostRepositoryRetryableTests: XCTestCase {
         XCTAssertEqual(attemptCount, 2)
     }
     
-    func testCreatePostWithRetry_NetworkTimeoutRetry() async throws {
+    func testCreatePostWithRetry_NonRetryableError() async throws {
         // Given
         var attemptCount = 0
         mockHTTPClient.sendResult = { _ in
             attemptCount += 1
-            if attemptCount == 1 {
-                throw NetworkError.timeout
-            }
+            throw NetworkError.unauthorized
         }
         
-        let request = NewPostRequest(content: "Test post", attachments: [])
+        let request = NewPostRequest(
+            id: "p_15",
+            content: "Test post",
+            attachements: []
+        )
         
-        // When
-        try await remoteDataSource.createPost(request)
-        
-        // Then
-        XCTAssertEqual(attemptCount, 2)
+        // When & Then
+        do {
+            try await remoteDataSource.createPost(request)
+            XCTFail("Expected error to be thrown")
+        } catch {
+            XCTAssertEqual(attemptCount, 1) // Should not retry
+            XCTAssertTrue(error is NetworkError)
+        }
     }
     
     // MARK: - Interact with Post with Retry Tests
@@ -193,11 +210,12 @@ final class PostRepositoryRetryableTests: XCTestCase {
         mockHTTPClient.sendResult = { _ in
             attemptCount += 1
             if attemptCount < 2 {
-                throw NetworkError.serverError(503)
+                throw NetworkError.serverError(500)
             }
+            return EmptyResponse()
         }
         
-        let request = PostInteractionRequest(postId: "test-id", action: .like)
+        let request = PostInteractionRequest(postId: "p_16", action: "like")
         
         // When
         try await remoteDataSource.interact(request)
@@ -206,43 +224,46 @@ final class PostRepositoryRetryableTests: XCTestCase {
         XCTAssertEqual(attemptCount, 2)
     }
     
-    func testInteractWithPostWithRetry_ConnectionLostRetry() async throws {
+    func testInteractWithPostWithRetry_NonRetryableError() async throws {
         // Given
         var attemptCount = 0
         mockHTTPClient.sendResult = { _ in
             attemptCount += 1
-            if attemptCount == 1 {
-                throw NetworkError.connectionLost
-            }
+            throw NetworkError.unauthorized
         }
         
-        let request = PostInteractionRequest(postId: "test-id", action: .unlike)
+        let request = PostInteractionRequest(postId: "p_17", action: "unlike")
         
-        // When
-        try await remoteDataSource.interact(request)
-        
-        // Then
-        XCTAssertEqual(attemptCount, 2)
+        // When & Then
+        do {
+            try await remoteDataSource.interact(request)
+            XCTFail("Expected error to be thrown")
+        } catch {
+            XCTAssertEqual(attemptCount, 1) // Should not retry
+            XCTAssertTrue(error is NetworkError)
+        }
     }
     
-    // MARK: - Network Error Tests
+    // MARK: - NetworkError Tests
     
-    func testNetworkError_RetryableStatusCodes() {
-        // Test server errors (5xx) are retryable
+    func testNetworkError_RetryableErrors() {
         XCTAssertTrue(NetworkError.serverError(500).isRetryable)
         XCTAssertTrue(NetworkError.serverError(502).isRetryable)
         XCTAssertTrue(NetworkError.serverError(503).isRetryable)
         XCTAssertTrue(NetworkError.serverError(504).isRetryable)
-        
-        // Test client errors (4xx) are not retryable
-        XCTAssertFalse(NetworkError.unauthorized.isRetryable)
-        XCTAssertFalse(NetworkError.forbidden.isRetryable)
-        XCTAssertFalse(NetworkError.notFound.isRetryable)
-        
-        // Test network errors are retryable
         XCTAssertTrue(NetworkError.timeout.isRetryable)
         XCTAssertTrue(NetworkError.connectionLost.isRetryable)
         XCTAssertTrue(NetworkError.rateLimited.isRetryable)
+    }
+    
+    func testNetworkError_NonRetryableErrors() {
+        XCTAssertFalse(NetworkError.serverError(400).isRetryable)
+        XCTAssertFalse(NetworkError.serverError(401).isRetryable)
+        XCTAssertFalse(NetworkError.serverError(403).isRetryable)
+        XCTAssertFalse(NetworkError.serverError(404).isRetryable)
+        XCTAssertFalse(NetworkError.unauthorized.isRetryable)
+        XCTAssertFalse(NetworkError.forbidden.isRetryable)
+        XCTAssertFalse(NetworkError.notFound.isRetryable)
     }
     
     func testNetworkError_StatusCodeMapping() {
@@ -258,10 +279,10 @@ final class PostRepositoryRetryableTests: XCTestCase {
 
 // MARK: - Mock HTTP Client
 
-private class MockURLSessionHTTPClient: URLSessionHTTPClient {
+private class MockHTTPClient: HTTPClient {
     var sendResult: ((Endpoint) async throws -> Any)?
     
-    override func send<T>(_ endpoint: Endpoint) async throws -> T where T : Decodable {
+    func send<T>(_ endpoint: Endpoint) async throws -> T where T : Decodable {
         guard let result = sendResult else {
             throw NetworkError.serverError(500)
         }
@@ -273,32 +294,27 @@ private class MockURLSessionHTTPClient: URLSessionHTTPClient {
         
         return typedResponse
     }
+    
+    func send<Request: Encodable, Response: Decodable>(_ endpoint: Endpoint, body: Request) async throws -> Response {
+        guard let result = sendResult else {
+            throw NetworkError.serverError(500)
+        }
+        
+        let response = try await result(endpoint)
+        guard let typedResponse = response as? Response else {
+            throw NetworkError.serverError(500)
+        }
+        
+        return typedResponse
+    }
+    
+    func send(_ endpoint: Endpoint) async throws {
+        guard let result = sendResult else {
+            throw NetworkError.serverError(500)
+        }
+        
+        _ = try await result(endpoint)
+    }
 }
 
-// MARK: - Mock Data Extensions
 
-extension PostPreview {
-    static let mock = PostPreview(
-        postId: "test-id",
-        author: AuthorPreview(name: "Test Author", avatarUrl: nil),
-        content: "Test content",
-        createdAt: Date(),
-        liked: false,
-        likeCount: 0,
-        sharedCount: 0,
-        attachmentCount: 0
-    )
-}
-
-extension PostDetail {
-    static let mock = PostDetail(
-        id: "test-id",
-        author: AuthorPreview(name: "Test Author", avatarUrl: nil),
-        content: "Test content",
-        createdAt: Date(),
-        liked: false,
-        likesCount: 0,
-        sharedCount: 0,
-        attachments: []
-    )
-}
