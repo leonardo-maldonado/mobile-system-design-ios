@@ -7,7 +7,7 @@ enum AppContainer {
             #if DEBUG
             URLSessionHTTPClient(
                 config: HTTPClientConfig(isLoggingEnabled: false),
-                interceptors: [FixturesInterceptor(routes: ["feed": "feed_fixture", "posts": "posts"], multipliers: [:])]
+                interceptors: [FixturesInterceptor()]
             )
             #else
             URLSessionHTTPClient(config: HTTPClientConfig())
