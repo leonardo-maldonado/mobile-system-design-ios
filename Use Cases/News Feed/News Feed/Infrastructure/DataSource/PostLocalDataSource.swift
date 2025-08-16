@@ -31,6 +31,7 @@ class PostLocalDataSource: PostLocalDataStoring {
     }
     
     func interact(_ request: PostInteractionRequest) async throws {
-        // TODO: Impl.
+        // For demo purposes, just succeed without storing locally
+        // In a real app, this would store the interaction in local database
     }
 }

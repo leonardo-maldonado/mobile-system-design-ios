@@ -97,22 +97,28 @@ final class PostRepository: PostRepositoryFetching {
             cache: postDetailCache
         )
         
-        // Update BOTH caches immediately to keep them in sync
-        await updateBothCaches(postId: postId, result: result)
-        
-        // Broadcast the result
-        let event = PostInteractionChanged(
-            postId: result.postId,
+        // Update cache with new state
+        let updatedDetail = PostDetail(
+            id: detail.id,
+            content: detail.content,
+            author: detail.author,
+            createdAt: detail.createdAt,
+            likesCount: result.likesCount,
             liked: result.liked,
-            likeCount: result.likesCount, // Convert likesCount to likeCount
-            error: result.error
+            sharedCount: detail.sharedCount,
+            attachments: detail.attachments
         )
-        interactionChanges.send(event)
         
-        // Re-throw error if interaction failed
-        if let error = result.error {
-            throw error
-        }
+        await postDetailCache[id: postId] = .ready(updatedDetail)
+        
+        // Publish interaction change
+        let event = PostInteractionChanged(
+            postId: postId,
+            liked: result.liked,
+            likeCount: result.likesCount
+        )
+        
+        interactionChanges.send(event)
     }
     
     private func getOrCreateDetail(for postId: String) async throws -> PostDetail {

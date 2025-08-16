@@ -28,67 +28,72 @@ struct NewsFeedDetailScreen: View {
                     DetailActionsView(liked: detail.liked, likes: detail.likesCount, shares: detail.sharedCount) {
                         Task { await toggleLike(detail) }
                     }
+                } else if state.isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = state.error {
+                    Text("Error: \(error.localizedDescription)")
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .padding()
         }
+        .navigationTitle("Post")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
-        .onAppear { 
-            setupSubscription() 
+        .task {
+            await loadPost()
         }
-        .onDisappear { 
-            cancellable?.cancel() 
+        .onAppear {
+            setupSubscription()
         }
-        .overlay {
-            if state.isLoading { ProgressView() }
+        .onDisappear {
+            cancellable?.cancel()
         }
     }
-
-    private func load() async {
-        await MainActor.run { state.isLoading = true }
-        defer { Task { await MainActor.run { state.isLoading = false } } }
+    
+    private func loadPost() async {
+        state.isLoading = true
+        state.error = nil
+        
         do {
-            let d = try await repository.fetchPostDetail(id: postId)
-            await MainActor.run { 
-                state.detail = d
-            }
+            let detail = try await repository.fetchPostDetail(id: postId)
+            state.detail = detail
         } catch {
-            await MainActor.run { state.errorMessage = error.localizedDescription }
+            state.error = error
         }
-    }
-
-    private func toggleLike(_ detail: PostDetail) async {
-        let action: UserInteraction.Action = detail.liked ? .unlike : .like
-        try? await repository.interactWithPost(postId, action: action)
+        
+        state.isLoading = false
     }
     
     private func setupSubscription() {
-        guard let repo = repository as? PostRepository else { 
-            return 
-        }
+        guard let repo = repository as? PostRepository else { return }
         
         cancellable = repo.interactionChanges
             .receive(on: DispatchQueue.main)
-            .sink { evt in
-                if evt.postId == self.postId {
-                    if var detail = self.state.detail {
-                        detail.liked = evt.liked
-                        detail.likesCount = evt.likeCount
-                        self.state.detail = detail
-                    }
+            .sink { event in
+                if event.postId == postId {
+                    state.detail?.liked = event.liked
+                    state.detail?.likesCount = event.likeCount
                 }
             }
     }
-}
-
-// MARK: - Local View State
     
-extension NewsFeedDetailScreen {
-    struct ViewState {
-        var isLoading = false
-        var errorMessage: String?
-        var detail: PostDetail?
+    private func toggleLike(_ detail: PostDetail) async {
+        let action: UserInteraction.Action = detail.liked ? .unlike : .like
+        
+        do {
+            try await repository.interactWithPost(postId, action: action)
+        } catch {
+            state.error = error
+        }
     }
 }
+
+private struct ViewState {
+    var detail: PostDetail?
+    var isLoading = false
+    var error: Error?
+}
+
 

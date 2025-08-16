@@ -1,6 +1,5 @@
 import Foundation
 
-/// Represents an optimistic update that can be committed or rolled back
 struct OptimisticUpdate<T> {
     let original: T
     let updated: T
@@ -14,7 +13,6 @@ struct OptimisticUpdate<T> {
     func rollback() -> T { original }
 }
 
-/// Result of a post interaction operation
 struct PostInteractionResult {
     let postId: String
     let liked: Bool
@@ -29,7 +27,6 @@ struct PostInteractionResult {
     }
 }
 
-/// Domain type representing a user interaction with a post
 struct PostInteraction {
     let postId: String
     let action: UserInteraction.Action
@@ -39,7 +36,6 @@ struct PostInteraction {
         self.postId = postId
         self.action = action
         
-        // Apply optimistic update based on action
         var updated = original
         switch action {
         case .like:
@@ -51,39 +47,37 @@ struct PostInteraction {
         case .shared:
             updated.sharedCount += 1
         case .bookmarked:
-            break // No optimistic update for bookmark
+            break
         }
         
         self.optimisticUpdate = OptimisticUpdate(original: original, updated: updated)
     }
     
-    /// Execute the interaction with optimistic updates and error handling
     func execute(
         remoteDataSource: PostRemoteDataFetching,
         localDataSource: PostLocalDataStoring,
         cache: PostDetailCache
     ) async throws -> PostInteractionResult {
-        // Apply optimistic update to cache
         await cache[id: postId] = .ready(optimisticUpdate.updated)
         
         do {
-            // Execute remote and local persistence
-            let request = PostInteractionRequest(id: postId, type: action.rawValue)
-            async let remote = remoteDataSource.interact(request)
-            async let local = localDataSource.interact(request)
-            _ = try await (remote, local)
+            let request = PostInteractionRequest(postId: postId, action: action.rawValue)
             
-            // Success: return confirmed state
+            // Execute both operations concurrently
+            async let remoteTask = remoteDataSource.interact(request)
+            async let localTask = localDataSource.interact(request)
+            
+            // Wait for both to complete
+            try await (remoteTask, localTask)
+            
             return PostInteractionResult(
                 postId: postId,
                 liked: optimisticUpdate.updated.liked,
                 likesCount: optimisticUpdate.updated.likesCount
             )
         } catch {
-            // Failure: rollback optimistic update
             await cache[id: postId] = .ready(optimisticUpdate.rollback())
             
-            // Return original state with error
             return PostInteractionResult(
                 postId: postId,
                 liked: optimisticUpdate.original.liked,
