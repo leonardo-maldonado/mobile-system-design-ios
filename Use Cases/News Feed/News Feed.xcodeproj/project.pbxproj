@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		EAE802A72E511B9700D2FE64 /* RetryableMacro in Frameworks */ = {isa = PBXBuildFile; productRef = EAE802A62E511B9700D2FE64 /* RetryableMacro */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		EA63FC0A2E46969F00E1AA12 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -66,6 +70,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EAE802A72E511B9700D2FE64 /* RetryableMacro in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -126,6 +131,7 @@
 			);
 			name = "News Feed";
 			packageProductDependencies = (
+				EAE802A62E511B9700D2FE64 /* RetryableMacro */,
 			);
 			productName = "News Feed";
 			productReference = EA63FBFC2E46969E00E1AA12 /* News Feed.app */;
@@ -209,6 +215,9 @@
 			);
 			mainGroup = EA63FBF32E46969E00E1AA12;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EAE802A82E511CA100D2FE64 /* XCLocalSwiftPackageReference "RetryableMacro" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = EA63FBFD2E46969E00E1AA12 /* Products */;
 			projectDirPath = "";
@@ -586,6 +595,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		EAE802A82E511CA100D2FE64 /* XCLocalSwiftPackageReference "RetryableMacro" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = RetryableMacro;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		EAE802A62E511B9700D2FE64 /* RetryableMacro */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RetryableMacro;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = EA63FBF42E46969E00E1AA12 /* Project object */;
 }
