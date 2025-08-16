@@ -5,7 +5,7 @@
 //  Created by Leonardo Maldonado on 8/8/25.
 //
 
-struct PostAttachement: Decodable {
+struct PostAttachement: Codable {
     var contentUrl: String
     var type: String
     var caption: String?
