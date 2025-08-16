@@ -1,9 +1,5 @@
-//
-//  PostRepository.swift
-//  News Feed
-//
-//  Created by Leonardo Maldonado on 8/8/25.
-//
+import Foundation
+import Combine
 
 protocol PostRepositoryFetching {
     func fetchPosts() async throws -> [PostPreview]
@@ -17,31 +13,46 @@ final class PostRepository: PostRepositoryFetching {
 
     private let remoteDataSource: PostRemoteDataFetching
     private let localDataSource: PostLocalDataStoring
-    private let postDetailCache: PostDetailCache
+    private let postPreviewCache: PostPreviewCache // For lightweight feed data
+    private let postDetailCache: PostDetailCache   // For full detail data
+    let interactionChanges = PassthroughSubject<PostInteractionChanged, Never>()
     
     init(
         remoteDataSource: PostRemoteDataFetching,
         localDataSource: PostLocalDataStoring,
-        postDetailCache: PostDetailCache = PostDetailCache()
+        postPreviewCache: PostPreviewCache = PostPreviewCache(),
+        postDetailCache: PostDetailCache = PostDetailCache(),
     ) {
         self.remoteDataSource = remoteDataSource
         self.localDataSource = localDataSource
+        self.postPreviewCache = postPreviewCache
         self.postDetailCache = postDetailCache
     }
     
     func fetchPosts() async throws -> [PostPreview] {
         // Try local cache/disk first
         if let local = try? await localDataSource.loadFeed(), !local.isEmpty {
-            return local.map { $0.toDomain() }
+            // Convert to PostPreview and cache them
+            let previews = local.map { $0.toDomain() }
+            for preview in previews {
+                await postPreviewCache[id: preview.postId] = .ready(preview)
+            }
+            return previews
         }
 
         // Fallback to remote
         let response = try await remoteDataSource.fetchFeed(pageToken: nil)
+        
+        // Cache previews directly (no conversion needed)
+        for preview in response.feed {
+            await postPreviewCache[id: preview.postId] = .ready(preview)
+        }
+        
         return response.feed
     }
     
     func fetchPostDetail(id: String) async throws -> PostDetail {
-        // Memory cache
+        // Check detail cache first
         if let entry = await postDetailCache[id: id] {
             switch entry {
             case .ready(let value):
@@ -51,14 +62,14 @@ final class PostRepository: PostRepositoryFetching {
             }
         }
 
-        // Disk
+        // Check disk
         if let dao = try? await localDataSource.loadPost(id: id) {
             let detail = dao.toDomain()
             await postDetailCache[id: id] = .ready(detail)
             return detail
         }
 
-        // Remote
+        // Fetch from remote
         let task = Task<PostDetail, Error> {
             let remote = try await remoteDataSource.fetchPostDetail(id: id)
             return remote.post
@@ -70,35 +81,96 @@ final class PostRepository: PostRepositoryFetching {
     }
     
     func savePost(_ post: PostDetail) async throws {
-        // Persist locally and update memory cache
-        // TODO: Map PostDetail -> PostDetailDAO when DAO is defined
         await postDetailCache[id: post.id] = .ready(post)
         // try await localDataSource.upsertPost(...)
     }
     
     func interactWithPost(_ postId: String, action: UserInteraction.Action) async throws {
-        let request = PostInteractionRequest(id: postId, type: action.rawValue)
-        // Optimistic update in memory cache if available
-        if let entry = await postDetailCache[id: postId], case .ready(var detail) = entry {
-            switch action {
-            case .like:
-                detail.liked = true
-                detail.likesCount += 1
-            case .unlike:
-                detail.liked = false
-                detail.likesCount = max(0, detail.likesCount - 1)
-            case .shared:
-                detail.sharedCount += 1
-            case .bookmarked:
-                break
-            }
-            await postDetailCache[id: postId] = .ready(detail)
+        // Get or create detail for interaction
+        let detail = try await getOrCreateDetail(for: postId)
+        
+        // Create and execute the interaction
+        let interaction = PostInteraction(postId: postId, action: action, original: detail)
+        let result = try await interaction.execute(
+            remoteDataSource: remoteDataSource,
+            localDataSource: localDataSource,
+            cache: postDetailCache
+        )
+        
+        // Update BOTH caches immediately to keep them in sync
+        await updateBothCaches(postId: postId, result: result)
+        
+        // Broadcast the result
+        let event = PostInteractionChanged(
+            postId: result.postId,
+            liked: result.liked,
+            likeCount: result.likesCount, // Convert likesCount to likeCount
+            error: result.error
+        )
+        interactionChanges.send(event)
+        
+        // Re-throw error if interaction failed
+        if let error = result.error {
+            throw error
         }
-
-        // Fire and forget remote + local persistence
-        async let remote = remoteDataSource.interact(request)
-        async let local = localDataSource.interact(request)
-        _ = try await (remote, local)
+    }
+    
+    private func getOrCreateDetail(for postId: String) async throws -> PostDetail {
+        // Try to get existing detail
+        if let entry = await postDetailCache[id: postId], case .ready(let detail) = entry {
+            return detail
+        }
+        
+        // Try to get from preview cache and create minimal detail
+        if let previewEntry = await postPreviewCache[id: postId], case .ready(let preview) = previewEntry {
+            let detail = PostDetail(
+                id: preview.postId,
+                content: preview.contentSummary,
+                author: AuthorPreview(id: "", name: preview.author, profileImageThumbnailURL: nil),
+                createdAt: preview.createdAt,
+                likesCount: preview.likeCount,
+                liked: preview.liked,
+                sharedCount: 0,
+                attachments: []
+            )
+            await postDetailCache[id: postId] = .ready(detail)
+            return detail
+        }
+        
+        // Fetch full detail from remote
+        return try await fetchPostDetail(id: postId)
+    }
+    
+    private func updateBothCaches(postId: String, result: PostInteractionResult) async {
+        // Update detail cache
+        if let detailEntry = await postDetailCache[id: postId], case .ready(let detail) = detailEntry {
+            let updatedDetail = PostDetail(
+                id: detail.id,
+                content: detail.content,
+                author: detail.author,
+                createdAt: detail.createdAt,
+                likesCount: result.likesCount,
+                liked: result.liked,
+                sharedCount: detail.sharedCount,
+                attachments: detail.attachments
+            )
+            await postDetailCache[id: postId] = .ready(updatedDetail)
+        }
+        
+        // Update preview cache
+        if let previewEntry = await postPreviewCache[id: postId], case .ready(let preview) = previewEntry {
+            let updatedPreview = PostPreview(
+                postId: preview.postId,
+                contentSummary: preview.contentSummary,
+                author: preview.author,
+                createdAt: preview.createdAt,
+                liked: result.liked,
+                likeCount: result.likesCount, // Convert likesCount to likeCount
+                attachtmentCount: preview.attachtmentCount,
+                attachmentPreviewImageUrl: preview.attachmentPreviewImageUrl
+            )
+            await postPreviewCache[id: postId] = .ready(updatedPreview)
+        }
     }
 
     func createPost(_ request: NewPostRequest) async throws {

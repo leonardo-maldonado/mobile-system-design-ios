@@ -29,9 +29,23 @@
 		EA63FC132E46969F00E1AA12 /* News FeedUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "News FeedUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		EA10E90D2E4D6851009222DD /* Exceptions for "News Feed" folder in "News Feed" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Application/Navigation/README.md,
+				README.md,
+			);
+			target = EA63FBFB2E46969E00E1AA12 /* News Feed */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		EA63FBFE2E46969E00E1AA12 /* News Feed */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EA10E90D2E4D6851009222DD /* Exceptions for "News Feed" folder in "News Feed" target */,
+			);
 			path = "News Feed";
 			sourceTree = "<group>";
 		};

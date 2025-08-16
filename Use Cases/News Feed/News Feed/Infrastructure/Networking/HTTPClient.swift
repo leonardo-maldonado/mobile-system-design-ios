@@ -243,8 +243,22 @@ struct URLSessionHTTPClient: HTTPClient {
 #if DEBUG
                 if let fixture = request.value(forHTTPHeaderField: "X-Debug-Fixture-URL"), let url = URL(string: fixture), url.isFileURL {
                     var data = try Data(contentsOf: url)
+                    // If detail fixture contains multiple posts keyed by id, pick the requested id (fallback when no per-id file exists)
+                    if let postId = request.value(forHTTPHeaderField: "X-Debug-PostId"), !postId.isEmpty {
+                        if let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            if let byId = root["posts"] as? [String: Any], let match = byId[postId] as? [String: Any] {
+                                let wrapped: [String: Any] = ["post": match]
+                                data = try JSONSerialization.data(withJSONObject: wrapped)
+                            } else if var post = root["post"] as? [String: Any] {
+                                // Fallback to single post format: force id to match request
+                                post["id"] = postId
+                                let wrapped: [String: Any] = ["post": post]
+                                data = try JSONSerialization.data(withJSONObject: wrapped)
+                            }
+                        }
+                    }
                     if let multHeader = request.value(forHTTPHeaderField: "X-Debug-Fixture-Multiply"), let mult = Int(multHeader), mult > 1 {
-                        // If fixture is a FeedAPIResponse, multiply the feed array
+                        // Multiply feed array (disabled by default via FixturesInterceptor.multipliers = [:])
                         if var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                            var arr = json["feed"] as? [[String: Any]], !arr.isEmpty {
                             var expanded: [[String: Any]] = []

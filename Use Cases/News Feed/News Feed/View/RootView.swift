@@ -2,14 +2,16 @@ import SwiftUI
 
 struct RootView: View {
     @StateObject private var router: AppRouter
+    private let repository: PostRepositoryFetching
 
-    init(router: AppRouter) {
+    init(router: AppRouter, repository: PostRepositoryFetching) {
         _router = StateObject(wrappedValue: router)
+        self.repository = repository
     }
 
     var body: some View {
         NavigationStack(path: binding(.feed)) {
-            NewsFeedHome()
+            NewsFeedHome(repository: repository)
                 .navigationDestination(for: AnyHashable.self) { route in
                     router.resolveDestination(for: route)
                 }

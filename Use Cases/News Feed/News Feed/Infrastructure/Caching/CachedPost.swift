@@ -20,3 +20,16 @@ actor PostDetailCache {
     }
 }
 
+actor PostPreviewCache {
+    private let cache: EntryCache
+
+    init(countLimit: Int = 200) {
+        self.cache = EntryCache(countLimit: countLimit)
+    }
+
+    subscript(id id: String) -> CacheState<PostPreview>? {
+        get { cache.get(id, as: PostPreview.self) }
+        set { cache.set(id, entry: newValue) }
+    }
+}
+

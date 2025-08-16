@@ -1,0 +1,2 @@
+{ "post": { "id": "p_4", "content": "Full content for p_4.", "author": { "id": "u_4", "name": "Dave", "profileImageThumbnailURL": "https://picsum.photos/seed/u4/120" }, "createdAt": "2025-08-09T16:30:00Z", "likesCount": 5, "liked": true, "sharedCount": 1, "attachments": [ { "contentUrl": "https://picsum.photos/seed/p4/800/600", "type": "image" } ] } }
+

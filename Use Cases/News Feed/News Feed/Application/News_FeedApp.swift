@@ -20,7 +20,7 @@ struct News_FeedApp: App {
                     if case let .feed(i) = vi { return i } else { return nil }
                 }
             ])
-            RootView(router: router)
+            RootView(router: router, repository: repo)
         }
     }
 }

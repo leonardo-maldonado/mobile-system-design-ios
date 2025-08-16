@@ -1,0 +1,2 @@
+{ "post": { "id": "p_8", "content": "Full content for p_8.", "author": { "id": "u_8", "name": "Heidi", "profileImageThumbnailURL": "https://picsum.photos/seed/u8/120" }, "createdAt": "2025-08-09T14:30:00Z", "likesCount": 8, "liked": false, "sharedCount": 0, "attachments": [ { "contentUrl": "https://picsum.photos/seed/p8/800/600", "type": "image" } ] } }
+

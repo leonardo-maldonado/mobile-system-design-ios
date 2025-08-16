@@ -1,0 +1,2 @@
+{ "post": { "id": "p_2", "content": "Full content for p_2.", "author": { "id": "u_2", "name": "Bob", "profileImageThumbnailURL": "https://picsum.photos/seed/u2/120" }, "createdAt": "2025-08-09T17:30:00Z", "likesCount": 3, "liked": false, "sharedCount": 0, "attachments": [] } }
+

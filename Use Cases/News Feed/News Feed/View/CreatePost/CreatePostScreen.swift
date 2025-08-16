@@ -105,9 +105,6 @@ private extension Binding where Value == String? {
 // Moved step views into separate files for readability: CreatePostMediaStep, CreatePostEditStep, CreatePostComposeStep
 
 #Preview {
-    let repo = PostRepository(
-        remoteDataSource: PostRemoteDataSource(),
-        localDataSource: PostLocalDataSource()
-    )
+    let repo = Container.shared.resolve(PostRepositoryFetching.self)
     return NavigationStack { CreatePostScreen(repository: repo) }
 }

@@ -1,0 +1,2 @@
+{ "post": { "id": "p_20", "content": "Full content for p_20.", "author": { "id": "u_20", "name": "Tina", "profileImageThumbnailURL": "https://picsum.photos/seed/u20/120" }, "createdAt": "2025-08-09T08:30:00Z", "likesCount": 10, "liked": false, "sharedCount": 0, "attachments": [ { "contentUrl": "https://picsum.photos/seed/p20/800/600", "type": "image" } ] } }
+

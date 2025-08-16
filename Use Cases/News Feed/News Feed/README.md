@@ -94,6 +94,30 @@ graph LR
 - Prefer intent-based names like `postSelected(id:)` and `composeRequested` rather than `openDetail` or `openCreatePost`.
 - Module routers are responsible for mapping intent → route (e.g., `postSelected(id:)` → `.detail(id)`).
 
+#### Dependency Injection Pattern
+- **Parent-to-Child**: Dependencies are passed down from parent to child views
+- **No Self-Resolution**: Views should not resolve their own dependencies using `Container.shared.resolve()`
+- **Explicit Dependencies**: All dependencies are explicitly declared in view initializers
+- **Shared Instances**: Parent controls how instances are shared (singleton, per-view, etc.)
+- **Testability**: Easy to inject mocks for testing
+
+**Example:**
+```swift
+// ✅ Good: Parent passes dependency
+struct ParentView: View {
+    private let repository: PostRepositoryFetching
+    
+    var body: some View {
+        ChildView(repository: repository)
+    }
+}
+
+// ❌ Bad: Child resolves its own dependency
+struct ChildView: View {
+    private let repository = Container.shared.resolve(PostRepositoryFetching.self)
+}
+```
+
 ## 🎯 Technical Implementation
 
 ### Data Flow
@@ -138,6 +162,46 @@ flowchart TD
     style RETURN fill:#8bc34a
     style REMOTE fill:#9c27b0
 ```
+
+### Interaction Write Flow (Optimistic)
+
+```mermaid
+sequenceDiagram
+  participant V as View (Detail/List)
+  participant REP as PostRepository
+  participant IOC as InteractionOverlayCache
+  participant PDC as PostDetailCache
+  participant RDS as RemoteDataSource
+
+  V->>REP: interactWithPost(id, action)
+  REP->>PDC: update PostDetail (optimistic)
+  REP->>IOC: set overlay { liked, likesCount }
+  REP->>RDS: send interaction (async)
+  RDS-->>REP: ok (later)
+  REP->>PDC: reconcile/confirm detail (optional)
+  REP->>IOC: adjust/clear overlay (optional)
+```
+
+### Feed Read Flow (Overlay at Repository Boundary)
+
+```mermaid
+sequenceDiagram
+  participant V as NewsFeedScreen
+  participant REP as PostRepository
+  participant IOC as InteractionOverlayCache
+  participant RDS as RemoteDataSource
+
+  V->>REP: fetchPosts()
+  REP->>RDS: GET /feed
+  RDS-->>REP: [PostPreview]
+  REP->>IOC: snapshot overlays
+  REP-->>V: [PostPreview] with overlays applied (liked/likeCount)
+```
+
+Notes:
+- The repository overlays the minimal, locally-known interaction state onto server results. Views do not reconcile caches.
+- Overlays are small deltas (liked, likesCount), not full `PostDetail` copies.
+- When the backend confirms, overlays can be cleared or kept as recent truth.
 
 ## 🛠️ Key Technologies
 

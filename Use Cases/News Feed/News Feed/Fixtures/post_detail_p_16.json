@@ -1,0 +1,2 @@
+{ "post": { "id": "p_16", "content": "Full content for p_16.", "author": { "id": "u_16", "name": "Paul", "profileImageThumbnailURL": "https://picsum.photos/seed/u16/120" }, "createdAt": "2025-08-09T10:30:00Z", "likesCount": 6, "liked": false, "sharedCount": 1, "attachments": [ { "contentUrl": "https://picsum.photos/seed/p16/800/600", "type": "image" } ] } }
+
