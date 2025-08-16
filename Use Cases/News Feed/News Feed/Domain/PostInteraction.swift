@@ -60,14 +60,14 @@ struct PostInteraction {
     ) async throws -> PostInteractionResult {
         await cache[id: postId] = .ready(optimisticUpdate.updated)
         
+        let request = PostInteractionRequest(postId: postId, action: action.rawValue)
+        
+        // Execute both operations concurrently
+        async let remoteTask = remoteDataSource.interact(request)
+        async let localTask = localDataSource.interact(request)
+        
+        // Wait for both to complete and handle errors
         do {
-            let request = PostInteractionRequest(postId: postId, action: action.rawValue)
-            
-            // Execute both operations concurrently
-            async let remoteTask = remoteDataSource.interact(request)
-            async let localTask = localDataSource.interact(request)
-            
-            // Wait for both to complete
             try await (remoteTask, localTask)
             
             return PostInteractionResult(
@@ -76,14 +76,27 @@ struct PostInteraction {
                 likesCount: optimisticUpdate.updated.likesCount
             )
         } catch {
-            await cache[id: postId] = .ready(optimisticUpdate.rollback())
-            
-            return PostInteractionResult(
-                postId: postId,
-                liked: optimisticUpdate.original.liked,
-                likesCount: optimisticUpdate.original.likesCount,
-                error: error
-            )
+            // Check if remote succeeded but local failed
+            do {
+                _ = try await remoteTask
+                // Remote succeeded, local failed - still consider it a success but report the error
+                return PostInteractionResult(
+                    postId: postId,
+                    liked: optimisticUpdate.updated.liked,
+                    likesCount: optimisticUpdate.updated.likesCount,
+                    error: error
+                )
+            } catch {
+                // Both failed - rollback cache
+                await cache[id: postId] = .ready(optimisticUpdate.rollback())
+                
+                return PostInteractionResult(
+                    postId: postId,
+                    liked: optimisticUpdate.original.liked,
+                    likesCount: optimisticUpdate.original.likesCount,
+                    error: error
+                )
+            }
         }
     }
 }
