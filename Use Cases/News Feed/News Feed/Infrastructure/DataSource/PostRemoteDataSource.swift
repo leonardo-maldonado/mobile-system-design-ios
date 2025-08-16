@@ -17,9 +17,9 @@ protocol PostRemoteDataFetching {
 
 actor PostRemoteDataSource: PostRemoteDataFetching {
     
-    var httpClient: URLSessionHTTPClient
+    var httpClient: HTTPClient
     
-    init(httpClient: URLSessionHTTPClient = .init(config: HTTPClientConfig())) {
+    init(httpClient: HTTPClient = URLSessionHTTPClient(config: HTTPClientConfig())) {
         self.httpClient = httpClient
     }
     
